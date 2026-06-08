@@ -157,7 +157,11 @@ do
   --   and `:help lua-guide-options`
   vim.o.list = true
   vim.opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
-
+  
+  -- Enable Smartindent
+  vim.opt.smartindent = true   -- Insert indents automatically based on code syntax
+  vim.opt.autoindent = true    -- Copy indent from current line when starting a new line
+  
   -- Preview substitutions live, as you type!
   vim.o.inccommand = 'split'
 
@@ -897,30 +901,32 @@ do
   vim.pack.add { { src = gh 'nvim-treesitter/nvim-treesitter', version = 'main' } }
 
   -- Ensure basic parsers are installed using native commands
-  local basic_parsers = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' }
-  
-  -- Quietly ensure basic parsers are installed
-  for _, parser in ipairs(basic_parsers) do
-    pcall(function()
-      vim.cmd('TSInstallSync ' .. parser)
-    end)
-  end
+  local basic_parsers = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc', 'typescript', 'tsx', 'javascript', 'python' }
+
+  -- On the `main` branch the old `:TSInstallSync` ex-command no longer exists;
+  -- parsers are installed via the Lua API instead. This downloads/compiles any
+  -- missing parsers asynchronously in the background.
+  require('nvim-treesitter').install(basic_parsers)
 
   ---@param buf integer
   ---@param language string
   local function treesitter_try_attach(buf, language)
-    -- Enable syntax highlighting via native Neovim API
-    pcall(vim.treesitter.start, buf, language)
+    -- Enable syntax highlighting via native Neovim API. Bail out if no parser
+    -- is installed for this language — otherwise we'd set an indentexpr below
+    -- that overrides smartindent/autoindent and returns -1 on every newline.
+    if not pcall(vim.treesitter.start, buf, language) then return end
 
-    -- Enable native indentation fallback
-    vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+    -- Use treesitter-aware indentation only when a parser actually attached.
+    vim.bo[buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
   end
 
   vim.api.nvim_create_autocmd('FileType', {
     callback = function(args)
       local buf, filetype = args.buf, args.match
       local language = vim.treesitter.language.get_lang(filetype) or filetype
-      
+      local ft_to_lang = { typescriptreact = "tsx", javascriptreact = "tsx" }
+      language = ft_to_lang[language] or language
+
       -- Automatically try to attach highlighting to the buffer
       treesitter_try_attach(buf, language)
     end,
