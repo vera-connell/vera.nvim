@@ -786,14 +786,43 @@ do
     -- gopls = {},
     -- pyright = {},
     -- rust_analyzer = {},
-    --
-    -- Some languages (like typescript) have entire language plugins that can be useful:
-    --    https://github.com/pmizio/typescript-tools.nvim
-    --
-    -- But for many setups, the LSP (`ts_ls`) will work just fine
-    -- ts_ls = {},
 
-    stylua = {}, -- Used to format Lua code
+    -- TypeScript/JavaScript language server (signatures, hover, go-to-def,
+    -- type diagnostics, completion). vtsls is a modern tsserver wrapper that
+    -- handles monorepos better than ts_ls. Mason package: `vtsls`.
+    vtsls = {
+      -- Inlay hints are off until you toggle them with <leader>th (see LspAttach);
+      -- these settings control what's shown when enabled.
+      settings = {
+        typescript = {
+          inlayHints = {
+            parameterNames = { enabled = 'literals' },
+            parameterTypes = { enabled = true },
+            variableTypes = { enabled = true },
+            propertyDeclarationTypes = { enabled = true },
+            functionLikeReturnTypes = { enabled = true },
+            enumMemberValues = { enabled = true },
+          },
+        },
+        javascript = {
+          inlayHints = {
+            parameterNames = { enabled = 'literals' },
+            parameterTypes = { enabled = true },
+            variableTypes = { enabled = true },
+            propertyDeclarationTypes = { enabled = true },
+            functionLikeReturnTypes = { enabled = true },
+            enumMemberValues = { enabled = true },
+          },
+        },
+      },
+    },
+
+    -- ESLint language server: in-editor lint diagnostics + `gra` autofix code
+    -- actions, using your project's eslint config. Mason package: `eslint-lsp`.
+    eslint = {},
+
+    -- NOTE: stylua is a *formatter*, not a language server — it lives in the
+    -- Mason tool list below and is wired into conform (Section 6), not here.
 
     -- Special Lua Config, as recommended by neovim help docs
     lua_ls = {
@@ -849,7 +878,7 @@ do
   -- You can press `g?` for help in this menu.
   local ensure_installed = vim.tbl_keys(servers or {})
   vim.list_extend(ensure_installed, {
-    -- You can add other tools here that you want Mason to install
+    'stylua', -- Lua formatter (used by conform, see Section 6)
   })
 
   require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -886,6 +915,7 @@ do
     },
     -- You can also specify external formatters in here.
     formatters_by_ft = {
+      lua = { 'stylua' }, -- lua_ls formatting is disabled, so stylua handles Lua
       -- rust = { 'rustfmt' },
       -- Conform can also run multiple formatters sequentially
       -- python = { "isort", "black" },
